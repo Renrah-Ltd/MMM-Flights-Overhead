@@ -141,10 +141,19 @@ module.exports = NodeHelper.create({
       const chunks = [];
       res.on("data", c => chunks.push(c));
       res.on("end", () => {
+        const body = Buffer.concat(chunks).toString();
+        if (res.statusCode === 429) {
+          cb(new Error("rate limited (429)"), null);
+          return;
+        }
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          cb(new Error(`HTTP ${res.statusCode}`), null);
+          return;
+        }
         try {
-          cb(null, JSON.parse(Buffer.concat(chunks).toString()));
+          cb(null, JSON.parse(body));
         } catch (e) {
-          cb(e, null);
+          cb(new Error(`invalid JSON: ${body.slice(0, 80)}`), null);
         }
       });
     });
