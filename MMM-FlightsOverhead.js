@@ -29,8 +29,18 @@ Module.register("MMM-FlightsOverhead", {
     if (notification === "FLIGHTS_DATA") {
       this.flights = payload.flights;
       this.error = payload.error || null;
-      this.loaded = true;
-      this.updateDom(this.config.animateIn ? 800 : 0);
+
+      if (!this.loaded) {
+        this.loaded = true;
+        this.updateDom(this.config.animateIn ? 800 : 0);
+        return;
+      }
+
+      if (this.config.view === "radar" && !this.error && this.radarEl?.isConnected) {
+        this.updateRadarBlips();
+      } else {
+        this.updateDom(this.config.animateIn ? 800 : 0);
+      }
     }
   },
 
@@ -121,6 +131,8 @@ Module.register("MMM-FlightsOverhead", {
     dot.className = "foh-radar-center";
     radar.appendChild(dot);
 
+    this.radarEl = radar;
+
     // flight blips
     this.flights.forEach(f => {
       if (f.lat == null || f.lon == null) return;
@@ -207,6 +219,44 @@ Module.register("MMM-FlightsOverhead", {
       </div>
     `;
     return card;
+  },
+
+  updateRadarBlips() {
+    this.radarEl.querySelectorAll(".foh-radar-blip").forEach(el => el.remove());
+
+    const badge = this.radarEl.closest(".mmm-flights-overhead")?.querySelector(".foh-badge");
+    if (badge) badge.textContent = this.flights.length;
+
+    const size = this.config.radarSize;
+    const center = size / 2;
+    const maxR = center - 24;
+
+    this.flights.forEach(f => {
+      if (f.lat == null || f.lon == null) return;
+      const bear = this.bearing(this.config.lat, this.config.lon, f.lat, f.lon);
+      const ratio = Math.min(f.distance / this.config.radius, 1);
+      const px = center + Math.sin(bear * Math.PI / 180) * ratio * maxR;
+      const py = center - Math.cos(bear * Math.PI / 180) * ratio * maxR;
+
+      const blip = document.createElement("div");
+      blip.className = "foh-radar-blip";
+      blip.style.cssText = `left:${px}px;top:${py}px;`;
+
+      const climbClass = f.verticalRate > 1 ? "climbing" : f.verticalRate < -1 ? "descending" : "level";
+
+      const plane = document.createElement("div");
+      plane.className = `foh-radar-plane ${climbClass}`;
+      plane.innerHTML = PLANE_SVG;
+      if (f.heading != null) plane.style.transform = `translate(-50%,-50%) rotate(${f.heading}deg)`;
+      blip.appendChild(plane);
+
+      const lbl = document.createElement("div");
+      lbl.className = "foh-radar-label";
+      lbl.textContent = f.callsign || f.icao24 || "?";
+      blip.appendChild(lbl);
+
+      this.radarEl.appendChild(blip);
+    });
   },
 
   bearing(lat1, lon1, lat2, lon2) {
