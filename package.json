@@ -1,0 +1,9 @@
+{
+  "name": "mmm-flights-overhead",
+  "version": "1.0.0",
+  "description": "MagicMirror² module — nearby flights overhead using OpenSky Network",
+  "main": "MMM-FlightsOverhead.js",
+  "keywords": ["magicmirror", "flights", "adsb", "opensky"],
+  "license": "MIT",
+  "dependencies": {}
+}
