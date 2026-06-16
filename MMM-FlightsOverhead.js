@@ -136,7 +136,7 @@ Module.register("MMM-FlightsOverhead", {
       const plane = document.createElement("div");
       plane.className = `foh-radar-plane ${climbClass}`;
       plane.textContent = "✈";
-      if (f.heading != null) plane.style.transform = `translate(-50%,-50%) rotate(${f.heading}deg)`;
+      if (f.heading != null) plane.style.transform = `translate(-50%,-50%) rotate(${f.heading - 45}deg)`;
       blip.appendChild(plane);
 
       const lbl = document.createElement("div");
