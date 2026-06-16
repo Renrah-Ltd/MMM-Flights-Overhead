@@ -22,7 +22,13 @@
 }
 
 .foh-header-icon {
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+
+.foh-header-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .foh-badge {
@@ -183,8 +189,14 @@
 }
 
 .foh-empty-icon {
-  font-size: 32px;
   opacity: 0.15;
+  display: flex;
+  align-items: center;
+}
+
+.foh-empty-icon svg {
+  width: 32px;
+  height: 32px;
 }
 
 .foh-scanning {
@@ -313,10 +325,14 @@
 
 .foh-radar-plane {
   position: absolute;
-  font-size: 13px;
   transform: translate(-50%, -50%);
-  line-height: 1;
   transition: transform 1s ease;
+}
+
+.foh-radar-plane svg {
+  width: 13px;
+  height: 13px;
+  display: block;
 }
 
 .foh-radar-plane.climbing   { color: #81c784; filter: drop-shadow(0 0 5px #81c784); }

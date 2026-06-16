@@ -1,3 +1,5 @@
+const PLANE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor" style="display:block"><path d="M50,3 L57,42 L97,63 L97,71 L57,56 L61,89 L75,95 L73,100 L50,93 L27,100 L25,95 L39,89 L43,56 L3,71 L3,63 L43,42 Z"/></svg>`;
+
 Module.register("MMM-FlightsOverhead", {
   defaults: {
     lat: 0,
@@ -49,7 +51,7 @@ Module.register("MMM-FlightsOverhead", {
     const header = document.createElement("div");
     header.className = "foh-header";
     header.innerHTML = `
-      <span class="foh-header-icon">✈</span>
+      <span class="foh-header-icon">${PLANE_SVG}</span>
       <span class="foh-header-label">FLIGHTS OVERHEAD</span>
       <span class="foh-badge">${this.flights.length}</span>
     `;
@@ -63,7 +65,7 @@ Module.register("MMM-FlightsOverhead", {
     if (this.flights.length === 0) {
       const empty = document.createElement("div");
       empty.className = "foh-empty";
-      empty.innerHTML = `<span class="foh-empty-icon">✈</span><span>No flights within ${this.config.radius} km</span>`;
+      empty.innerHTML = `<span class="foh-empty-icon">${PLANE_SVG}</span><span>No flights within ${this.config.radius} km</span>`;
       wrapper.appendChild(empty);
       return wrapper;
     }
@@ -135,8 +137,8 @@ Module.register("MMM-FlightsOverhead", {
 
       const plane = document.createElement("div");
       plane.className = `foh-radar-plane ${climbClass}`;
-      plane.textContent = "✈";
-      if (f.heading != null) plane.style.transform = `translate(-50%,-50%) rotate(${f.heading - 45}deg)`;
+      plane.innerHTML = PLANE_SVG;
+      if (f.heading != null) plane.style.transform = `translate(-50%,-50%) rotate(${f.heading}deg)`;
       blip.appendChild(plane);
 
       const lbl = document.createElement("div");
