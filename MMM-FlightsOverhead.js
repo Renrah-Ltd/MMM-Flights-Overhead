@@ -2,13 +2,15 @@ Module.register("MMM-FlightsOverhead", {
   defaults: {
     lat: 0,
     lon: 0,
-    radius: 25,          // km — ~audible range for most aircraft
-    altitudeMaxFt: null, // filter out high cruisers (e.g. 45000); null = no filter
+    radius: 25,
+    altitudeMaxFt: null,
     limit: 6,
-    updateInterval: 60 * 1000, // OpenSky anonymous: ~100 req/day; 60s = safe
+    updateInterval: 60 * 1000,
     showRouteInfo: true,
-    units: "imperial",   // "imperial" (ft, kts) or "metric" (m, km/h)
+    units: "imperial",
     animateIn: true,
+    view: "list",        // "list" or "radar"
+    radarSize: 400,      // px — diameter of radar circle
   },
 
   start() {
@@ -53,6 +55,11 @@ Module.register("MMM-FlightsOverhead", {
     `;
     wrapper.appendChild(header);
 
+    if (this.config.view === "radar") {
+      wrapper.appendChild(this.buildRadar());
+      return wrapper;
+    }
+
     if (this.flights.length === 0) {
       const empty = document.createElement("div");
       empty.className = "foh-empty";
@@ -63,6 +70,84 @@ Module.register("MMM-FlightsOverhead", {
 
     this.flights.forEach(f => wrapper.appendChild(this.buildCard(f)));
     return wrapper;
+  },
+
+  buildRadar() {
+    const size = this.config.radarSize;
+    const center = size / 2;
+    const maxR = center - 24;
+
+    const radar = document.createElement("div");
+    radar.className = "foh-radar";
+    radar.style.width = size + "px";
+    radar.style.height = size + "px";
+
+    // concentric rings
+    [0.33, 0.66, 1].forEach(ratio => {
+      const ring = document.createElement("div");
+      ring.className = "foh-radar-ring";
+      const d = ratio * maxR * 2;
+      const offset = center - ratio * maxR;
+      ring.style.cssText = `width:${d}px;height:${d}px;left:${offset}px;top:${offset}px;`;
+      radar.appendChild(ring);
+    });
+
+    // crosshair
+    const ch = document.createElement("div");
+    ch.className = "foh-radar-crosshair";
+    radar.appendChild(ch);
+
+    // sweep
+    const sweep = document.createElement("div");
+    sweep.className = "foh-radar-sweep";
+    radar.appendChild(sweep);
+
+    // compass labels
+    ["N", "E", "S", "W"].forEach((dir, i) => {
+      const label = document.createElement("div");
+      label.className = "foh-radar-compass";
+      label.textContent = dir;
+      const angle = i * 90;
+      const x = center + Math.sin(angle * Math.PI / 180) * (maxR + 14);
+      const y = center - Math.cos(angle * Math.PI / 180) * (maxR + 14);
+      label.style.cssText = `left:${x}px;top:${y}px;`;
+      radar.appendChild(label);
+    });
+
+    // center dot
+    const dot = document.createElement("div");
+    dot.className = "foh-radar-center";
+    radar.appendChild(dot);
+
+    // flight blips
+    this.flights.forEach(f => {
+      if (f.lat == null || f.lon == null) return;
+      const bear = this.bearing(this.config.lat, this.config.lon, f.lat, f.lon);
+      const ratio = Math.min(f.distance / this.config.radius, 1);
+      const px = center + Math.sin(bear * Math.PI / 180) * ratio * maxR;
+      const py = center - Math.cos(bear * Math.PI / 180) * ratio * maxR;
+
+      const blip = document.createElement("div");
+      blip.className = "foh-radar-blip";
+      blip.style.cssText = `left:${px}px;top:${py}px;`;
+
+      const climbClass = f.verticalRate > 1 ? "climbing" : f.verticalRate < -1 ? "descending" : "level";
+
+      const plane = document.createElement("div");
+      plane.className = `foh-radar-plane ${climbClass}`;
+      plane.textContent = "✈";
+      if (f.heading != null) plane.style.transform = `translate(-50%,-50%) rotate(${f.heading}deg)`;
+      blip.appendChild(plane);
+
+      const lbl = document.createElement("div");
+      lbl.className = "foh-radar-label";
+      lbl.textContent = f.callsign || f.icao24 || "?";
+      blip.appendChild(lbl);
+
+      radar.appendChild(blip);
+    });
+
+    return radar;
   },
 
   buildCard(f) {
@@ -120,6 +205,15 @@ Module.register("MMM-FlightsOverhead", {
       </div>
     `;
     return card;
+  },
+
+  bearing(lat1, lon1, lat2, lon2) {
+    const toRad = d => d * Math.PI / 180;
+    const dLon = toRad(lon2 - lon1);
+    const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+    const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2))
+             - Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   },
 
   toCompass(deg) {
