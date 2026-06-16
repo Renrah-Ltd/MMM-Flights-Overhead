@@ -4,7 +4,8 @@ const https = require("https");
 module.exports = NodeHelper.create({
   start() {
     this.routeCache = new Map();
-    this.cacheMaxAge = 24 * 60 * 60 * 1000; // routes don't change, cache 24h
+    this.photoCache = new Map();
+    this.cacheMaxAge = 24 * 60 * 60 * 1000;
   },
 
   socketNotificationReceived(notification, payload) {
@@ -68,7 +69,7 @@ module.exports = NodeHelper.create({
         .sort((a, b) => a.distance - b.distance)
         .slice(0, limit);
 
-      if (!showRouteInfo || flights.length === 0) {
+      if (flights.length === 0) {
         this.sendSocketNotification("FLIGHTS_DATA", { flights });
         return;
       }
@@ -80,12 +81,34 @@ module.exports = NodeHelper.create({
       };
 
       flights.forEach((flight, i) => {
-        if (!flight.callsign) { done(); return; }
-        this.getRoute(flight.callsign, route => {
-          flights[i].route = route;
-          done();
-        });
+        let flightPending = 2;
+        const flightDone = () => { flightPending--; if (flightPending === 0) done(); };
+
+        if (showRouteInfo && flight.callsign) {
+          this.getRoute(flight.callsign, route => { flights[i].route = route; flightDone(); });
+        } else {
+          flightDone();
+        }
+
+        this.getPhoto(flight.icao24, photo => { flights[i].photo = photo; flightDone(); });
       });
+    });
+  },
+
+  getPhoto(icao24, cb) {
+    const cached = this.photoCache.get(icao24);
+    if (cached && Date.now() - cached.ts < this.cacheMaxAge) {
+      cb(cached.data);
+      return;
+    }
+
+    const url = `https://api.planespotters.net/pub/photos/hex/${encodeURIComponent(icao24)}`;
+    this.fetchJSON(url, (err, data) => {
+      const photo = (!err && data?.photos?.length)
+        ? (data.photos[0].thumbnail_large?.src || data.photos[0].thumbnail?.src || null)
+        : null;
+      this.photoCache.set(icao24, { data: photo, ts: Date.now() });
+      cb(photo);
     });
   },
 

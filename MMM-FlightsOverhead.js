@@ -67,7 +67,8 @@ Module.register("MMM-FlightsOverhead", {
 
   buildCard(f) {
     const card = document.createElement("div");
-    card.className = "foh-card";
+    card.className = "foh-card" + (f.photo ? " foh-card--photo" : "");
+    if (f.photo) card.style.backgroundImage = `url(${f.photo})`;
 
     const altitude = f.altitude != null
       ? (this.config.units === "imperial"
