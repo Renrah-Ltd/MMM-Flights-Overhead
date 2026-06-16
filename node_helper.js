@@ -5,6 +5,7 @@ module.exports = NodeHelper.create({
   start() {
     this.routeCache = new Map();
     this.photoCache = new Map();
+    this.flightCache = new Map();
     this.cacheMaxAge = 24 * 60 * 60 * 1000;
   },
 
@@ -15,7 +16,14 @@ module.exports = NodeHelper.create({
   },
 
   fetchFlights(config) {
-    const { lat, lon, radius, limit = 6, altitudeMaxFt, showRouteInfo } = config;
+    const { lat, lon, radius, limit = 6, altitudeMaxFt, showRouteInfo, updateInterval = 60000 } = config;
+    const key = `${lat},${lon},${radius},${altitudeMaxFt},${limit}`;
+
+    const cached = this.flightCache.get(key);
+    if (cached && Date.now() - cached.ts < updateInterval - 5000) {
+      this.sendSocketNotification("FLIGHTS_DATA", cached.data);
+      return;
+    }
 
     // Bounding box from radius (km)
     const latDelta = radius / 111;
@@ -38,6 +46,7 @@ module.exports = NodeHelper.create({
       }
 
       if (!data || !data.states) {
+        this.flightCache.set(key, { data: { flights: [] }, ts: Date.now() });
         this.sendSocketNotification("FLIGHTS_DATA", { flights: [] });
         return;
       }
@@ -69,15 +78,20 @@ module.exports = NodeHelper.create({
         .sort((a, b) => a.distance - b.distance)
         .slice(0, limit);
 
+      const emit = data => {
+        this.flightCache.set(key, { data, ts: Date.now() });
+        this.sendSocketNotification("FLIGHTS_DATA", data);
+      };
+
       if (flights.length === 0) {
-        this.sendSocketNotification("FLIGHTS_DATA", { flights });
+        emit({ flights });
         return;
       }
 
       let pending = flights.length;
       const done = () => {
         pending--;
-        if (pending === 0) this.sendSocketNotification("FLIGHTS_DATA", { flights });
+        if (pending === 0) emit({ flights });
       };
 
       flights.forEach((flight, i) => {
