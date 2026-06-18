@@ -151,7 +151,7 @@ module.exports = NodeHelper.create({
   },
 
   fetchJSON(url, cb) {
-    const req = https.get(url, { headers: { "User-Agent": "MMM-FlightsOverhead/1.0" } }, res => {
+    const req = https.get(url, { headers: { "User-Agent": "MMM-FlightsOverhead/1.0 (+https://github.com/JackHarner/MMM-FlightsOverhead)" } }, res => {
       const chunks = [];
       res.on("data", c => chunks.push(c));
       res.on("end", () => {
