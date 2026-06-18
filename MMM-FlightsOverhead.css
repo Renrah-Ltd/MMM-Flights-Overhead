@@ -109,19 +109,19 @@
 
 .foh-airline {
   font-size: 10px;
-  color: #546e7a;
+  color: #fff;
   letter-spacing: 0.5px;
 }
 
 .foh-country {
-  color: #78909c;
+  color: #fff;
   font-size: 10px;
   letter-spacing: 1px;
 }
 
 .foh-dist {
   font-size: 10px;
-  color: #37474f;
+  color: #fff;
   letter-spacing: 0.5px;
   margin-top: 2px;
 }
@@ -143,7 +143,7 @@
 .foh-stat-label {
   font-size: 8px;
   letter-spacing: 2px;
-  color: #37474f;
+  color: #fff;
   text-transform: uppercase;
   width: 24px;
   text-align: right;
@@ -151,8 +151,8 @@
 
 .foh-stat-value {
   font-size: 13px;
-  font-weight: 500;
-  color: #90a4ae;
+  font-weight: 900;
+  color: #fff;
   letter-spacing: 0.5px;
   min-width: 90px;
   text-align: right;
@@ -231,9 +231,10 @@
 .foh-radar {
   position: relative;
   border-radius: 50%;
-  background: radial-gradient(circle, #001a0a 0%, #000c04 70%, #000000 100%);
+  background: rgba(0, 26, 10,0.8);
   border: 1px solid rgba(0, 255, 70, 0.25);
   box-shadow: 0 0 30px rgba(0, 255, 70, 0.06), inset 0 0 60px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(30px);
   overflow: hidden;
 }
 
