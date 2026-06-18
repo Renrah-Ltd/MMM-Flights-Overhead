@@ -30,6 +30,15 @@ Module.register("MMM-FlightsOverhead", {
       this.flights = payload.flights;
       this.error = payload.error || null;
 
+      if (this.error && this.error.includes("rate limited")) {
+        this.hide(800);
+        return;
+      }
+
+      if (this.hidden) {
+        this.show(800);
+      }
+
       if (!this.loaded) {
         this.loaded = true;
         this.updateDom(this.config.animateIn ? 800 : 0);

@@ -7,6 +7,8 @@ module.exports = NodeHelper.create({
     this.photoCache = new Map();
     this.flightCache = new Map();
     this.cacheMaxAge = 24 * 60 * 60 * 1000;
+    this.failCacheAge = 10 * 60 * 1000;
+    this.rateLimited = {};
   },
 
   socketNotificationReceived(notification, payload) {
@@ -35,6 +37,12 @@ module.exports = NodeHelper.create({
       lamax: (lat + latDelta).toFixed(4),
       lomax: (lon + lonDelta).toFixed(4),
     });
+
+    if (this.isRateLimited("opensky")) {
+      console.log("[MMM-FlightsOverhead] OpenSky rate limited, using stale cache or skipping");
+      if (cached) this.sendSocketNotification("FLIGHTS_DATA", cached.data);
+      return;
+    }
 
     const url = `https://opensky-network.org/api/states/all?${params}`;
 
@@ -111,10 +119,12 @@ module.exports = NodeHelper.create({
 
   getPhoto(icao24, cb) {
     const cached = this.photoCache.get(icao24);
-    if (cached && Date.now() - cached.ts < this.cacheMaxAge) {
+    if (cached && Date.now() - cached.ts < (cached.data ? this.cacheMaxAge : this.failCacheAge)) {
       cb(cached.data);
       return;
     }
+
+    if (this.isRateLimited("planespotters")) { cb(null); return; }
 
     const url = `https://api.planespotters.net/pub/photos/hex/${encodeURIComponent(icao24)}`;
     this.fetchJSON(url, (err, data) => {
@@ -128,14 +138,17 @@ module.exports = NodeHelper.create({
 
   getRoute(callsign, cb) {
     const cached = this.routeCache.get(callsign);
-    if (cached && Date.now() - cached.ts < this.cacheMaxAge) {
+    if (cached && Date.now() - cached.ts < (cached.data ? this.cacheMaxAge : this.failCacheAge)) {
       cb(cached.data);
       return;
     }
 
+    if (this.isRateLimited("adsbdb")) { cb(null); return; }
+
     const url = `https://api.adsbdb.com/v0/callsign/${encodeURIComponent(callsign)}`;
     this.fetchJSON(url, (err, data) => {
       if (err || !data?.response?.flightroute) {
+        this.routeCache.set(callsign, { data: null, ts: Date.now() });
         cb(null);
         return;
       }
@@ -157,6 +170,9 @@ module.exports = NodeHelper.create({
       res.on("end", () => {
         const body = Buffer.concat(chunks).toString();
         if (res.statusCode === 429) {
+          const host = new URL(url).hostname;
+          const retryAfter = parseInt(res.headers["retry-after"], 10);
+          this.setRateLimited(host, retryAfter);
           cb(new Error("rate limited (429)"), null);
           return;
         }
@@ -173,6 +189,21 @@ module.exports = NodeHelper.create({
     });
     req.on("error", e => cb(e, null));
     req.setTimeout(10000, () => { req.destroy(); cb(new Error("timeout"), null); });
+  },
+
+  isRateLimited(key) {
+    const until = this.rateLimited[key];
+    return until && Date.now() < until;
+  },
+
+  setRateLimited(host, retryAfterSec) {
+    const key = host.includes("planespotters") ? "planespotters"
+              : host.includes("adsbdb") ? "adsbdb"
+              : host.includes("opensky") ? "opensky"
+              : host;
+    const backoff = (retryAfterSec && retryAfterSec > 0 ? retryAfterSec : 300) * 1000;
+    this.rateLimited[key] = Date.now() + backoff;
+    console.warn(`[MMM-FlightsOverhead] ${key} rate limited, backing off ${backoff / 1000}s`);
   },
 
   haversine(lat1, lon1, lat2, lon2) {
